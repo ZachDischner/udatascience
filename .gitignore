@@ -1,6 +1,9 @@
 # OSX
 .DS_Store
 
+# Course stuff (don't put videos in git for now)
+*.mp4
+
 
 ## Thanks! https://github.com/github/gitignore/blob/master/Python.gitignore
 
