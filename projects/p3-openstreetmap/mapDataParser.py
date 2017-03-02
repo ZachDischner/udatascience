@@ -73,6 +73,7 @@ _STREET_MAPPING = { "St": "Street",
             "Wy":"Way",
             "Pt":"Point"
             }
+_DIR_MAPPING = {"N":"North", "E":"East", "W":"West", "S":"South"}
 
 
 ##############################################################################
@@ -110,7 +111,7 @@ def get_elements(osm_file=_OSMFILE, tags=( 'node','way', 'relation'), limit=None
 ##############################################################################
 #                         Data Cleaning Functions
 #----------*----------*----------*----------*----------*----------*----------*
-def _augment_street_mapping():
+def _augment_re_mapping(orig_mapping):
     """This gets called on import
     
     Reference:
@@ -118,26 +119,38 @@ def _augment_street_mapping():
     def findme(x):
         return f"(?<!\S){x}(?!\S)"
     mapping = {}
-    for k,v in _STREET_MAPPING.items():
+    for k,v in orig_mapping.items():
         mapping[findme(k)] = v
         mapping[findme(k+".")] = v
         mapping[findme(k.lower())] = v
         mapping[findme(k.upper())] = v
-        # Also include the final version so we stop searching early
+        
+        # Also include the destination mapping as a key, in all cases
         mapping[findme(v)] = v
+        mapping[findme(v.lower())] = v
+        mapping[findme(v.upper())] = v
     
     # Alphabetically sort for convenience if you wantsorted(m.keys(), key=lambda s:s.lower()):
     return mapping
 
-def update_streettype(street):
-    # print(f"\nSearching for street type pattern in '{street}'")
-    for pattern,map_to in STREET_MAPPING.items():
-        m = re.search(pattern, street)
+def expand_from_mapping(to_expand, mapping):
+    
+    ###### Try each pattern (key in mapping) agains the string we want to expand
+    for pattern,map_to in mapping.items():
+        m = re.search(pattern, to_expand)
         if m:
-            # print(f"\tStreet type replacement matched! '{street}' ==> matches {pattern} ==> {map_to}")
-            return re.sub(pattern, map_to, street)
-    print(f"\tNo streettype pattern was found for street name: '{street}'")
-    return street
+            ## Found our pattern. Substitute with the expanded mapping and return
+            return re.sub(pattern, map_to, to_expand)
+    ## Pattern wasn't found, return original string
+    return to_expand
+
+def expand_streettype(addr_string):
+    # print(f"\nSearching for street type pattern in '{street}'")
+    return expand_from_mapping(addr_string, STREET_MAPPING)
+
+def expand_streetdir(addr_string):
+    return expand_from_mapping(addr_string, DIR_MAPPING)
+    
 
 def parse_attributes(element):
     """parse Attriburtes out of an XML element"""
@@ -185,7 +198,8 @@ def parse_children(element):
                 if spec=="postcode": spec="zipcode"
                 if spec=="street": 
                     # print(f"Street found: {spec}={value}")
-                    value = update_streettype(value)
+                    value = expand_streettype(value)
+                    value = expand_streetdir(value)
                 if "address" not in subdicts: subdicts["address"] = {}
                 subdicts["address"].update({spec:value})
 
@@ -258,7 +272,9 @@ def main(input_file=_OSMFILE, output_file=_JSONFILE, parse_every=_PARSE_EVERY,pr
     return sample
                 
 
-STREET_MAPPING = _augment_street_mapping()
+STREET_MAPPING = _augment_re_mapping(_STREET_MAPPING)
+DIR_MAPPING = _augment_re_mapping(_DIR_MAPPING)
+
 ##############################################################################
 #                              Runtime Execution
 #----------*----------*----------*----------*----------*----------*----------*
