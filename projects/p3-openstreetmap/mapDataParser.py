@@ -10,15 +10,16 @@ __maintainer__ = "Zach Dischner"
 __email__      = "zach.dischner@gmail.com"
 __status__     = "Dev"
 __doc__        ="""
-File name: MapDataParser.py
+File name: mapDataParser.py
 Created:  Mar/01/2017
-Modified: MAr/01/2017
+Modified: Mar/06/2017
 
 Parse open street map data, downloaded from https://www.openstreetmap.org. Data comes downloaded as an osm (xml) file.
 Cleaned elements of the dataset are saved to a json file for import into a MongoDB database. 
 
 Some initial data problems:
     * Addresses use "postcode" not "zipcode"
+    * Zipcodes sometimes have supplimental specifications
     * Streettypes all over the place
 
 Problems to discuss:
@@ -75,6 +76,27 @@ _STREET_MAPPING = { "St": "Street",
             }
 _DIR_MAPPING = {"N":"North", "E":"East", "W":"West", "S":"South"}
 
+###### Utils
+## Colors!!!
+class bcolors:
+    HEADER  = '\033[95m'
+    OKBLUE  = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL    = '\033[91m'
+    ENDC    = '\033[0m'
+
+def printColor(msg,color):
+    print(color + str(msg) + bcolors.ENDC)
+
+def printYellow(msg):
+    printColor(msg,bcolors.WARNING)
+def printGreen(msg):
+    printColor(msg,bcolors.OKGREEN)
+def printBlue(msg):
+    printColor(msg, bcolors.OKBLUE)
+def printRed(msg):
+    printColor(msg,bcolors.FAIL)
 
 ##############################################################################
 #                         XML Parsing Functions
@@ -150,12 +172,37 @@ def expand_streettype(addr_string):
 
 def expand_streetdir(addr_string):
     return expand_from_mapping(addr_string, DIR_MAPPING)
-    
 
+def parse_zip(key,value):
+    """Parse and check on zipcode specification. Return new spec and value after it has been verified and Cleaned
+    """
+    ## Rename
+    spec="zipcode"
+
+    ## Extract 5 digit zipcode. EG could be "CO 80302-1334"
+    truezip = re.findall("(\d{5})($|-)",value) # Search for two matches. Just care about the first one
+    if truezip:
+        value = truezip[0][0]
+    else:
+        printYellow(f"\nZipcode field is not understood! Key:{key}=Value:{value}. Flagging as unknown")
+        return spec, "UNKNOWN-"+value
+
+    if not value.startswith("8"):
+        printYellow(f"\nZipcode field does not appear to be in Boulder! Key:{key}=Value:{value}. Adding anyways")
+    
+    return spec,value
+
+
+##############################################################################
+#                         Main Parsing Flow Functions
+#----------*----------*----------*----------*----------*----------*----------*
 def parse_attributes(element):
-    """parse Attriburtes out of an XML element"""
+    """parse Attriburtes out of an XML element
+    EG:
+        <xmlelement attrib1='foo' attrib2='bar'... >"""
     node = {}
-    ## Start by adding all XML element attributes to node: <node attrib1="foo" attrib2="bar">
+    ## Start by adding all XML element attributes to node dictionary.
+    # element.attrib is a straight up dictionary of all attributes 
     node.update(element.attrib)
 
     ## Try to extract lat/lon. These attributes go into an array field called "pos"
@@ -194,8 +241,10 @@ def parse_children(element):
                     print(f"ignoring nested address info: {key}")
                     continue
                 addr,spec = key.split(":")
-                # Replace "postcode" with "zipcode"
-                if spec=="postcode": spec="zipcode"
+                # Replace "postcode" with "zipcode", check if it seems valid. Only really works for Boulder, CO, USA
+                if spec=="postcode": 
+                    spec,value = parse_zip(key,value)
+
                 if spec=="street": 
                     # print(f"Street found: {spec}={value}")
                     value = expand_streettype(value)
@@ -207,10 +256,12 @@ def parse_children(element):
             elif len(key.split(":")) > 1:
                 *classifier,spec = key.split(":")                
                 ## Accommodate another level of nested values. AKA "service:bicycle:pump"
-                # I can't figure out a quick infinite subclassifier solution so just support a few here
+                # Too lazy to figure out a quick infinite subclassifier (infinitely many ':'s and accompanying subdictionaries)
+                #   unknown value added for the time sink and potential for increased processing time. 
                 if len(classifier) > 1:
                     if len(classifier) >= 2:
-                        print(f"\n\t\tMore than two nested ':' encountered in {key}! Value:{value}. Skipping")
+                        # print(f"\n\t\tMore than two nested ':' encountered in Key:{key} Value:{value}. Just adding as is and continuing")
+                        attrs[key] = value
                         continue
                     subc,subspec = classifier
                     if subc not in subdicts: subdicts[subc] = {}
@@ -260,7 +311,7 @@ def main(input_file=_OSMFILE, output_file=_JSONFILE, parse_every=_PARSE_EVERY,pr
     with codecs.open(output_file, "w") as fo:
         for ii, element in enumerate(get_elements(input_file)):
             if ii % parse_every == 0:
-                # print(f"Parsing {ii}th element: {element.tag}")
+                print(f"\rParsing {ii}th element: {element.tag}", end="")
                 parsed = parse_element(element)
                 if pretty:
                     fo.write(json.dumps(parsed, indent=2)+"\n")
