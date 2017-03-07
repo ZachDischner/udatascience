@@ -242,7 +242,7 @@ def parse_children(element):
                     continue
                 addr,spec = key.split(":")
                 # Replace "postcode" with "zipcode", check if it seems valid. Only really works for Boulder, CO, USA
-                if spec=="postcode": 
+                if (spec=="postcode" or spec=="zipcode"): 
                     spec,value = parse_zip(key,value)
 
                 if spec=="street": 

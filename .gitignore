@@ -4,6 +4,8 @@
 # Course stuff (don't put videos in git for now)
 *.mp4
 mapdata.osm
+mapdata.osm.json
+
 
 ## Thanks! https://github.com/github/gitignore/blob/master/Python.gitignore
 
