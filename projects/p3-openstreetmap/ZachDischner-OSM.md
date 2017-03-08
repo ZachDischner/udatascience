@@ -63,8 +63,68 @@ The user *Berjoh* has nearly 80000 contributions, which is nearly twice what the
 ![Imgur](http://i.imgur.com/4RmxTtb.png)
 
 ### Least Active Contributors<sup>6</sup>
-106 users have contributed only 1 post, which is just 0.133% of the top user's contribution.
+106 users have contributed only 1 post, which is just 0.133% of the top user's contribution. I find it notable that the vast majority of the contributions come from a smaller demographic of dedicated users. 
 
+## Additional Exploration: Amenities
+Particular interest here is in what services and amenities are marked in Boulder. For these statistics, nodes and ways were both considered, amenities fell into both categories.
+
+The top 10 most occuring amenities are shown in the table below. Not surprisingly as one who lives here and commutes everywhere is the fact that bike parking is listed as the second most common amenity. Boulder is regularly ranked as one of the most biker friendly cities in the country https://matadornetwork.com/trips/8-bike-friendly-cities-america/. Within city limits, Boulder has 431<sup>8</sup> marked bikeways. 
+
+**Top 10 Amenities in Boulder, CO**<sup>7</sup>
+
+|Amenity/Service Type|Count in Boulder|
+|---|---|
+|parking|1194|
+|bicycle_parking|646|
+|restaurant|223|
+|bench|174|
+|school|104|
+|fast_food|100|
+|cafe|93|
+|place_of_worship|76|
+|bank|55|
+|fuel|50|
+
+### Religion
+Boulder is a mix of college town and wealthy and educated working population, dominated by mostly politically left-leaning caucasians [Wiki](https://en.wikipedia.org/wiki/Boulder,_Colorado#Demographics). I was curious about whether or not the distribution of places of worship would reflect these trends. Christian institutions dominate the landscape here, followed by "Unknown" denominations. From experience, there are a number of atypical religious groups around the area. However, a quick examination at the "Unknown" places of worship<sup>11</sup> seems to indicate that it is more likely that these locations simply weren't classified as belonging to a particular denomination.
+ 
+**Top 5 places of worship in Boulder, CO**<sup>9</sup>
+
+|Place of Worship|Count in Boulder|
+|---|---|
+|christian|59|
+|Unknown|12|
+|jewish|2|
+|unitarian_universalist|2|
+|muslim|1|
+
+### Cuisine
+Boulder is also known to be a foodie town ([Wiki](https://en.wikipedia.org/wiki/Boulder,_Colorado#Top_rankings)). At the same time, it is indeed part college town with nearly 1/3 of it's population hailing from the University of Colorado. The first and second most numerous food types are "Unknown" and "Pizza", respectively. A town with an abundance of pizza offerings immediately fits the bill for a college town. Additionally, a quick examination of the "Unknown" cuisines<sup>12</sup> implies that these restaurants are simply uncategorized because they often fall outside of easily identifiable cuisine classifications. This supports, or at least fails to reject, the idea that Boulder is indeed a foodie town. These are observations only, especially since the OSM dataset is uncontrolled and contains a lot of irregularaties. However the trends observed do seem to match the expected demographic behavior.
+
+**Top 10 Cuisine Types of worship in Boulder, CO**<sup>10</sup>
+
+|Cuisine|Count in Boulder|
+|---|---|
+|Unknown|76|
+|pizza|16|
+|chinese|15|
+|mexican|15|
+|italian|10|
+|american|8|
+|sandwich|8|
+|sushi|8|
+|breakfast|7|
+|indian|7|
+
+## Ideas for Future Study
+### Cross-City Comparison
+The trends identified so far are made only with reference to Boulder's OSM dataset. It would be helpful to compare these stats to other cities, to see if Boulder really does have more bikeways than the average city, or if there are more or fewer churches in this proclaimed left-wing town. 
+
+### Route/Distance Computation
+Additionally, I would like to look into total bikeable distance, and average distance of bikeable "cycleways". The approach here would be to look at the lat/lon of associated nodes along a way, tracked by the `node_ref` array, and calculate path length as of an *open* way. That investigation is more involved, and will be left for another exersize. 
+
+### Densities
+Finally, examining the densities of certain amenities or nodes with respect to lat/lot in order to guestimate the *hotspots* in Boulder. One could select all nodes in a grid defined by lat/lons, and then sort the locations by highest density of noders. As a prototype, getting all nodes between 40 and 41 degrees latitude, -106 and -105 degrees longitude would look like this: `nodes = boulder.find({"pos.0":{"$lt":41,"$gt":40}, "pos.1":{"$lt":-105,"$gt":-104}}`. Doing this type of search and grouping directly in MongoDB would be preferrable, but again I'll leave this to another investigation
 
 ## Appendix A - Reference Queries
 See the exploratory code in `mongoMapExplore.py` for actual queries ran. Below are nearly identical reproductions of each query for reference. 
@@ -74,7 +134,8 @@ Precursor:
 from pymongo import MongoClient
 client = MongoClient('mongodb://localhost:27017')
 db = client.get_database("OpenStreetMap")
-boulder = db.get_collection("Boulder")
+collection = db.get_collection("Boulder")
+boulder = collection # for convenience
 ```
 
 1. `boulder.count()`
@@ -82,8 +143,80 @@ boulder = db.get_collection("Boulder")
 3. `boulder.find({"type":"way"}).count()`
 4. `len(boulder.distinct('created.user'))`
 5. `boulder.aggrigate([{"$group":  {"_id":"$created.user", "contribs":{"$sum":1} } },{"$sort":{"contribs":-1} },{"$limit":  10}])`
-6. 
+6. `collection.aggregate([{"$group":  {"_id":"$created.user", "contribs":{"$sum":1} } },
+                                  {"$group":    {"_id":"$contribs", "contrib_groups":{"$sum":1} } },
+                                  {"$sort":     {"_id":1} },
+                                  {"$limit":    1}
+                                    ])`
+7. `boulder.([{"$match":   {"amenity": {"$exists":True}}},
+                                        {"$group":  {"_id":     "$amenity", "count":{"$sum":1}}},
+                                        {"$sort":   {"count":-1}}
+                                      ])`
+8. `boulder.find({"type":"way", "highway":"cycleway"}).count()`   
+9. `boulder.aggregate([{"$match":   {"amenity": {"$exists":True}, "amenity":"place_of_worship"}},
+                                    {"$group":  {"_id":     "$religion", "count":{"$sum":1}}},
+                                    {"$sort":   {"count":-1}}
+                                      ])`
+10. `collection.aggregate([{"$match":   { "amenity": {"$exists":True}, "amenity":"restaurant"}},
+                                    {"$group":  {"_id":     "$cuisine", "count":{"$sum":1}}},
+                                    {"$sort":   {"count":-1}}
+                                      ])`                               
+11. `[_ for _ in boulder.find({"amenity":"place_of_worship","religion":{"$exists":False}})]`
+12. `[_ for _ in boulder.find({"amenity":"restaurant","cuisine":{"$exists":False}})]`
 
+
+## Appendix B - Document Structure
+Since MongoDB is schemaless, there is no set structure that describes every document. However they do have a general form, illustrated by the example below. 
+
+**Node**:
+
+```json
+{'_id': ObjectId('58bd9a614645d0fbde114702'),
+ 'address': {'housenumber': '627',
+             'street': 'South Broadway',
+             'zipcode': '80305'},
+ 'amenity': 'pub',
+ 'created': {'changeset': '42390292',
+             'timestamp': '2016-09-23T21:05:09Z',
+             'uid': '21931',
+             'user': 'amm',
+             'version': '8'},
+ 'id': '25782064',
+ 'name': 'Southern Sun',
+ 'opening_hours': 'Mo-We 16:00-01:00; Th-Su 11:30-01:00',
+ 'phone': '3035430886',
+ 'pos': [39.9842183, -105.2493081],
+ 'type': 'node',
+ 'website': 'http://www.southernsunpub.com'}
+```
+
+**Way**:
+
+```json
+{'_id': ObjectId('58bd9a694645d0fbde179f91'),
+ 'created': {'changeset': '7569770',
+             'timestamp': '2011-03-15T20:13:35Z',
+             'uid': '117055',
+             'user': 'GPS_dr',
+             'version': '2'},
+ 'highway': 'service',
+ 'id': '17015643',
+ 'node_refs': ['1203544554',
+               '1203542626',
+               '1203543427',
+               '1203543406',
+               '176389889',
+               '176389891'],
+ 'service': 'alley',
+ 'tiger': {'cfcc': 'A41',
+           'county': 'Boulder, CO',
+           'reviewed': 'no',
+           'separated': 'no',
+           'source': 'tiger_import_dch_v0.6_20070809',
+           'tlid': '188245474:188244953',
+           'upload_uuid': 'bulk_upload.pl-1b7afdac-0ecb-47b2-8901-e595d422ff1f'},
+ 'type': 'way'}
+```
 
 
 

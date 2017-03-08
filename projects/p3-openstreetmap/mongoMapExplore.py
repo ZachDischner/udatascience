@@ -68,12 +68,14 @@ def load_data(datafile=_JSONFILE, db=_MAPDB, collection=_COLLECTION):
 #                          DB Query Functions
 #----------*----------*----------*----------*----------*----------*----------*
 # nodes = [n for n in collection.find({"created.user":"GPS_dr"}).limit(5)]
-def tableprint(header,values):
+def print_table_md(header,values):
     """Simple list of dictionaries to markdown table"""
     print("|" + "|".join(header) + "|")
     print("|---"*(len(header)) + "|")
     for vdict in values:
         for item in vdict.values():
+            if "none" in str(item).lower():  ## Hackey way to clean Nones from table
+                item = "Unknown"
             print(f"|{item}", end="")
         print("|")
 
@@ -91,14 +93,14 @@ def print_user_stats():
     ###### Look at top users
     users = collection.aggregate([{"$group":  {"_id":"$created.user", "contribs":{"$sum":1} } },
                             {"$sort":   {"contribs":-1} },
-                            # {"$limit":  10}
+                            {"$limit":  10}
                             ])
     users = [u for u in users]
     top_user = users[0]
     print(f"Top contributing user is {top_user['_id']} with {top_user['contribs']} contributions")
-    tableprint(["User","Contributions"], users)
+    print_table_md(["User","Contributions"], users)
     
-    ## Quick plot
+    ## Quick boxplot of top users
     sns.plt.figure()
     df = pd.DataFrame(users)
     ax = sns.boxplot(x=df['contribs'])
@@ -109,7 +111,7 @@ def print_user_stats():
     ugroups = collection.aggregate([{"$group":  {"_id":"$created.user", "contribs":{"$sum":1} } },
                                   {"$group":    {"_id":"$contribs", "contrib_groups":{"$sum":1} } },
                                   {"$sort":     {"_id":1} },
-                                #   {"$limit":    1}
+                                  {"$limit":    1}
                                     ])
     ugroups = [ug for ug in ugroups]
     single_group = ugroups[0]["contrib_groups"]
@@ -117,13 +119,43 @@ def print_user_stats():
 
     return ugroups, users
 
-def print_node_types():
+def print_amenity_stats()():
+    ###### Most common ammenities
+    amenities = collection.aggregate([{"$match":   {"amenity": {"$exists":True}}},
+                                        {"$group":  {"_id":     "$amenity", "count":{"$sum":1}}},
+                                        {"$sort":   {"count":-1}}
+                                      ])
+    ## Get top 10
+    top_am = [next(amenities) for _ in range(10)]
+    print("**Top 10 Amenities in Boulder, CO**\n")
+    print_table_md(["Amenity/Service Type","Count in Boulder"],top_am)
+
+    ###### Top Places of Worship
+    churches = collection.aggregate([{"$match":   {"amenity": {"$exists":True}, "amenity":"place_of_worship"}},
+                                    {"$group":  {"_id":     "$religion", "count":{"$sum":1}}},
+                                    {"$sort":   {"count":-1}}
+                                      ])
+    top_churches = [next(churches) for _ in range(5)]
+    print("\n\n**Top 5 places of worship in Boulder, CO**\n")
+    print_table_md(["Place of Worship","Count in Boulder"],top_churches)
+
+    ###### Top Resturant Types
+    foods = collection.aggregate([{"$match":   { "amenity": {"$exists":True}, "amenity":"restaurant"}},
+                                    {"$group":  {"_id":     "$cuisine", "count":{"$sum":1}}},
+                                    {"$sort":   {"count":-1}}
+                                      ])
+    top_foods = [next(foods) for _ in range(10)]
+    print("\n\n**Top 10 Cuisine Types of worship in Boulder, CO**\n")
+    print_table_md(["Cuisine","Count in Boulder"],top_foods)
+
+    
+    return top_am, top_churches, top_foods
 
 
 def main():
     print_summary()
     print_user_stats()
-    print_node_types
+    print_amenity_stats()
 
 
 ##############################################################################
