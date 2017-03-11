@@ -1,10 +1,14 @@
 # OSX
 .DS_Store
 
-# Course stuff (don't put videos in git for now)
+# Course data stuff (don't put videos in git for now)
 *.mp4
 mapdata.osm
 mapdata.osm.json
+#*.bz2
+projects/p6/*.csv*
+*.zip
+resources/Videos
 
 
 ## Thanks! https://github.com/github/gitignore/blob/master/Python.gitignore
