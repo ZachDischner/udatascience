@@ -156,6 +156,9 @@ def _augment_re_mapping(orig_mapping):
     return mapping
 
 def expand_from_mapping(to_expand, mapping):
+    """Pretty simple wrapper that uses a dictionary mapping a regex pattern to a new value
+    and substitutes that mapping in the string `to_expand`
+    """
     
     ###### Try each pattern (key in mapping) agains the string we want to expand
     for pattern,map_to in mapping.items():
@@ -167,10 +170,16 @@ def expand_from_mapping(to_expand, mapping):
     return to_expand
 
 def expand_streettype(addr_string):
+    """Targeted use of `expand_from_mapping` to expand and parse street name abbreviations
+    and replace with true streetnames
+    """
     # print(f"\nSearching for street type pattern in '{street}'")
     return expand_from_mapping(addr_string, STREET_MAPPING)
 
 def expand_streetdir(addr_string):
+    """Targeted use of `expand_from_mapping` to expand and parse street direction abbreviations
+    and replace with true full name streetnames
+    """
     return expand_from_mapping(addr_string, DIR_MAPPING)
 
 def parse_zip(key,value):
@@ -199,7 +208,9 @@ def parse_zip(key,value):
 def parse_attributes(element):
     """parse Attriburtes out of an XML element
     EG:
-        <xmlelement attrib1='foo' attrib2='bar'... >"""
+        <xmlelement attrib1='foo' attrib2='bar'... >
+    
+    Returns a dictionary `node` with parsed and wrangled tags/child info from the element"""
     node = {}
     ## Start by adding all XML element attributes to node dictionary.
     # element.attrib is a straight up dictionary of all attributes 
@@ -218,7 +229,8 @@ def parse_attributes(element):
     return node
 
 def parse_children(element):
-    """Parse children of an element (only tags for now)"""
+    """Parse children of an element (only tags for now)
+    """
     attrs = {}
     subdicts = {}
     for child in element.getchildren():
@@ -292,6 +304,8 @@ def parse_children(element):
     return attrs
 
 def parse_element(element):
+    """Parse a single known XML `element` into a node, which is a simple dictionary
+    """
     node = {}
     node['type'] = element.tag
     attrs = parse_attributes(element)
@@ -307,6 +321,8 @@ def parse_element(element):
 #----------*----------*----------*----------*----------*----------*----------*
 
 def main(input_file=_OSMFILE, output_file=_JSONFILE, parse_every=_PARSE_EVERY,pretty=False, samplesize=1000):
+    """Main function to parse and convert every `samplesize`th element in `input_file` xml into processing ready JSON
+    """
     sample = {}
     with codecs.open(output_file, "w") as fo:
         for ii, element in enumerate(get_elements(input_file)):
