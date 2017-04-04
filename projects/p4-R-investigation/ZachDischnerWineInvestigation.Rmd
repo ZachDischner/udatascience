@@ -1,0 +1,232 @@
+Vines and Wines by Zach Dischner
+========================================================
+
+**Date:** April 4 2017
+Part of the Udacity Data Analyst Nanodegree program
+
+![Red Wines](https://goo.gl/images/uynJff)
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load up all packages we want to use
+library(ggplot2)
+library(gridExtra)
+library(GGally)
+library(scales)
+library(memisc)
+```
+
+```{r echo=FALSE, Load_the_Data}
+setwd("/Users/dischnerz/code/udatascience/projects/p4-R-investigation")
+# Load the Data
+data <- read.csv("wineQualityReds.csv")
+
+## Some preliminary manipulation
+data$total.acidity <- data$fixed.acidity + data$volatile.acidity
+```
+
+### Dataset Description
+This investigaion is about red wine.
+
+```{r echo=FALSE}
+str(data)
+```
+# Univariate Plots Section
+Overall distribution of *quality* rating of red wines. Quality here is a single
+measurement between 1 and 10 of oerall wine quality, as decided by three 
+separate agencies
+
+```{r echo=FALSE, Univariate_Plots}
+# Easiest, look at quality
+qplot(x=quality, data=data, geom='bar')
+```
+
+Overall wine quality, rated on a scale from 1 to 10, has a normal shape and
+very few exceptionally high or low quality ratings. 
+
+```{r echo=FALSE , stats}
+# Fixed and Volatile acidity
+q1<-ggplot(aes(x=pH), data=data)+
+   geom_histogram(color =I('black'),fill = I('#990000'))+
+  ggtitle('pH distribution')
+q2<-ggplot(aes(x=sulphates), data=data)+
+   geom_histogram(color =I('black'),fill = I('#990000'))+
+  ggtitle('Sulphates distribution')
+q3<-ggplot(aes(x=chlorides), data=data)+
+   geom_histogram(color =I('black'),fill = I('#990000'))+
+  ggtitle('Chlorides distribution')
+q4<-ggplot(aes(x=citric.acid), data=data)+
+   geom_histogram(color =I('black'),fill = I('#990000'))+
+  ggtitle('Citric Acid')
+q5<-ggplot(aes(x=total.sulfur.dioxide), data=data)+
+   geom_histogram(color =I('black'),fill = I('#990000'))+
+  ggtitle('Total SO2 distribution')
+q6<-ggplot(aes(x=total.acidity), data=data)+
+   geom_histogram(color =I('black'),fill = I('#990000'))+
+  ggtitle('Total Acidity (fixed + volatile)')
+
+grid.arrange(q1,q2,q3,q4,q5,q6,ncol=2)
+```
+Of all single component distributions, `pH` appears to be the only measurement 
+that is normally distributed. `Acidity` is mostly normal with just a slight 
+positive skew. `Citric Acid` and `S02` particularly exhibit a strong positive 
+skew. `pH` and `Acidity` reflect measurements that are centered around non-zero
+numbers, whereas the other measurements are clustered at near-zero numbers. 
+Since these measurements cannot have negative values, the skewed distribution is
+sensible. 
+
+**Note on Acidity**
+Wine acidity is measured in multiple components: volatile and static. Total 
+acidity is not to be confused with the `pH` of a wine. The former details the 
+amount of acid in the wine, the latter relates to the *strength* of the acids. 
+
+More on *static* and *volatile* acidity measures here: 
+http://winemakersacademy.com/understanding-wine-acidity/
+
+# Univariate Analysis
+
+> **Tip**: Now that you've completed your univariate explorations, it's time to
+reflect on and summarize what you've found. Use the questions below to help you
+gather your observations and add your own if you have other thoughts!
+
+#### Overview
+The red wine dataset features 1599 separate observations, each for a different 
+red wine sample. For each sample, 11 *laboratory* based measurements were made,
+as well as a single subjective overall quality rating. The quality of a wine was
+decided upon by three separate professional wine assessment institutions. 
+
+As presented, each wine sample is provided as a single row in the dataset. Due to
+the nature of how some measurements are gathered, some values given represent 
+*components* of a measurement total. For example, `data.fixed.acidity` and 
+`data.volatile.acidity` are both obtained via separate measurement techniques, 
+and must be summed to indicate the total acidity present in a wine sample. For 
+these cases, I supplimented the data given by computing the total and storing in 
+the dataframe with a `data.total.*` variable. 
+
+#### Features of Interest
+The main interesting measurement here is the wine `quality`. It is the
+subjective measurement of how attractive the wine might be to a consumer. The
+goal here will be to try and correlate non-subjective wine properties with its 
+quality.
+
+I am curious about a few trends in particular:
+* sulphates vs quality - Low sulphate wine has a reputation for not causing \
+hangovers
+* alcohol vs quality - Just an interesting measurement. Strong beers are \
+typically higher quality and harder to make than lower proof beers. 
+
+At first, the lack of an age metric might be surprising since it is commonly
+a factor in quick assumptions of wine quality. However, since the actual effect
+of wine age is on the wine's measurable chemical properties, its inclusion here
+is not necessary. 
+
+### Distributions
+I left distributions alone here. Many measurements that were clustered close to
+zero had a positive skew (you can't have negative percentages or ammounts).
+Others such as `pH` and `total.acidity` and `quality` had normal looking 
+distributions.
+
+
+# Bivariate Plots Section
+
+> **Tip**: Based on what you saw in the univariate plots, what relationships
+between variables might be interesting to look at in this section? Don't limit
+yourself to relationships between a main output feature and one of the
+supporting variables. Try to look at relationships between supporting variables
+as well.
+
+```{r echo=FALSE, Bivariate_Plots}
+# sample 10,000 diamonds from the data set
+set.seed(20022012)
+diamond_samp <- diamonds[sample(1:length(diamonds$price), 10000), ]
+ggpairs(diamond_samp, 
+        lower = list(continuous = wrap("points", shape = I('.'))), 
+        upper = list(combo = wrap("box", outlier.shape = I('.'))))
+```
+
+# Bivariate Analysis
+
+> **Tip**: As before, summarize what you found in your bivariate explorations
+here. Use the questions below to guide your discussion.
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?
+
+### What was the strongest relationship you found?
+
+
+# Multivariate Plots Section
+
+> **Tip**: Now it's time to put everything together. Based on what you found in
+the bivariate plots section, create a few multivariate plots to investigate
+more complex interactions between variables. Make sure that the plots that you
+create here are justified by the plots you explored in the previous section. If
+you plan on creating any mathematical models, this is the section where you
+will do that.
+
+```{r echo=FALSE, Multivariate_Plots}
+
+```
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+
+### Were there any interesting or surprising interactions between features?
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the \
+strengths and limitations of your model.
+
+------
+
+# Final Plots and Summary
+
+> **Tip**: You've done a lot of exploration and have built up an understanding
+of the structure of and relationships between the variables in your dataset.
+Here, you will select three plots from all of your previous exploration to
+present here as a summary of some of your most interesting findings. Make sure
+that you have refined your selected plots for good titling, axis labels (with
+units), and good aesthetic choices (e.g. color, transparency). After each plot,
+make sure you justify why you chose each plot by describing what it shows.
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+
+```
+
+### Description One
+
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+
+```
+
+### Description Two
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+
+```
+
+### Description Three
+
+------
+
+# Reflection
+
+> **Tip**: Here's the final step! Reflect on the exploration you performed and
+the insights you found. What were some of the struggles that you went through?
+What went well? What was surprising? Make sure you include an insight into
+future work that could be done with the dataset.
+
+> **Tip**: Don't forget to remove this, and the other **Tip** sections before
+saving your final work and knitting the final report!
